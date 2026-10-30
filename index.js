@@ -3,7 +3,7 @@ const {
     useMultiFileAuthState,
     DisconnectReason,
     fetchLatestBaileysVersion,
-} = require("@whiskeysockets/baileys")
+} = require("@dcloude/baileys")
 
 const pino = require("pino")
 const fs = require("fs")
