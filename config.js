@@ -1,8 +1,10 @@
 module.exports = {
-    // Isi nomor HP lu di sini biar gak nanya di terminal (contoh: "628123456789")
-    // Kalau dikosongin (""), bot bakal nanya pas pertama kali run.
-    phoneNumber: "",
+    // Isi custom pairing code di sini (WAJIB PAS 8 KARAKTER)
+    // Contoh: "FYRONN99", "BANANA12", "MARKET01"
+    customPairingCode: "FYRONN99",
 
+    // Sisanya biarin aja kayak sebelumnya
+    phoneNumber: "",
     message: `بسم الله الرحمن الرحيم
 
 *Assalamu'alaikum semua sekedar menawarkan*
@@ -38,5 +40,5 @@ MINAT? PM
 https://wa.me/6281287048664
 
 SALURAN
-https://whatsapp.com/channel/0029Vb9KOPK4dTnO6zMt7R3z`
+ https://whatsapp.com/channel/0029Vb9KOPK4dTnO6zMt7R3z`
 }
