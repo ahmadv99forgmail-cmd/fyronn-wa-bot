@@ -3,22 +3,21 @@ const {
     useMultiFileAuthState,
     DisconnectReason,
     fetchLatestBaileysVersion,
-    makeCacheableSignalKeyStore, // Tambahan buat fix Bad MAC
+    makeCacheableSignalKeyStore,
 } = require("@whiskeysockets/baileys")
 
 const pino = require("pino")
 const readline = require("readline")
 const config = require("./config")
 
-// Banner Fyronn
+// Banner Fyronn Gradient (Merah ke Biru)
 const BANNER = `
-  /-------\\   \\       /   |-------|   /-------\\   |\\      |   |\\      |
-  |  _____|    \\     /    |  _____|   |  _____|   | \\     |   | \\     |
-  | |           \\   /     | |         | |     |   |  \\    |   |  \\    |
-  | |----        | |      | |----\\    | |     |   |   \\   |   |   \\   |
-  | |____        | |      | |____/    | |     |   |    \\  |   |    \\  |
-  | |           | |      | |         | |     |   |     \\ |   |     \\ |
-  |_|           |_|      |_|         \\_______/   |      \\|   |      \\|
+\x1b[31m _____                      _   _   ____        _   \x1b[0m
+\x1b[31m|  ___|   _ _ __ ___  _ __ | \\ | | | __ )  ___ | |_ \x1b[0m
+\x1b[35m| |_ | | | | '__/ _ \\| '_ \\|  \\| | |  _ \\ / _ \\| __|\x1b[0m
+\x1b[34m|  _|| |_| | | | (_) | | | | |\\  | | |_) | (_) | |_ \x1b[0m
+\x1b[34m|_|   \\__, |_|  \\___/|_| |_|_| \\_| |____/ \\___/ \\__|\x1b[0m
+\x1b[34m       |___/                                       \x1b[0m
 `;
 
 const logger = pino({ level: "silent" })
@@ -31,17 +30,16 @@ let sock
 let botPhoneNumber = null
 let isBroadcasting = false
 
-// Prompt masukin nomor HP
 function askPhoneNumber() {
     return new Promise((resolve) => {
         const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
         const ask = () => {
-            rl.question("Masukkan nomor WhatsApp bot (contoh: 62812...): ", (answer) => {
+            rl.question("No whatsApp: ", (answer) => {
                 let num = String(answer).replace(/[^0-9]/g, "")
                 if (num.startsWith("0")) num = "62" + num.slice(1)
                 if (num.startsWith("8")) num = "62" + num
                 if (num.length < 8) {
-                    console.log("Format salah, ulangi.")
+                    console.log("Salah")
                     return ask()
                 }
                 rl.close()
@@ -62,12 +60,12 @@ async function connectToWhatsApp() {
         printQRInTerminal: false,
         auth: {
             creds: authState.creds,
-            // Ini kuncinya biar Bad MAC gak sering muncul
             keys: makeCacheableSignalKeyStore(authState.keys, logger),
         },
         browser: ["Ubuntu", "Chrome", "122.0.0.0"],
         generateHighQualityLinkPreview: true,
         syncFullHistory: false,
+        getMessage: async () => { return { conversation: 'pong' } } // ANTI BAD MAC SPAM
     })
 
     sock.ev.on("creds.update", saveCreds)
@@ -76,12 +74,11 @@ async function connectToWhatsApp() {
         const { connection, lastDisconnect, qr } = update
 
         if (qr && !authState.creds.registered && !botPhoneNumber) {
-            botPhoneNumber = await askPhoneNumber()
+            botPhoneNumber = config.phoneNumber || await askPhoneNumber()
             try {
                 const code = await sock.requestPairingCode(botPhoneNumber)
-                console.log(`\n=========================================`)
-                console.log(` PAIRING CODE: ${code} `)
-                console.log(`=========================================\n`)
+                console.log(BANNER) 
+                console.log(` PAIRING CODE: ${code} `) 
             } catch (err) {
                 console.log("Gagal minta code:", err.message)
             }
@@ -97,37 +94,39 @@ async function connectToWhatsApp() {
             }
         } else if (connection === "open") {
             console.log(BANNER)
-            console.log("[+] BOT TERSAMBUNG KE WHATSAPP")
-            console.log("[*] Chat NOMOR BOT SENDIRI, ketik '!start' buat mulai blast.")
-            console.log("[*] Ketik '!stop' buat berenti.\n")
+            console.log("[+] Fyronn Bot Help")
+            console.log("[*] Type'!start' for start message")
+            console.log("[*] Type'!stop' for stop message\n")
             listenCommands()
         }
     })
 }
 
-// Nangkep perintah start / stop
 function listenCommands() {
     sock.ev.on("messages.upsert", async (m) => {
-        const msg = m.messages[0]
-        if (!msg.message || !msg.key.fromMe) return
+        try {
+            const msg = m.messages[0]
+            if (!msg.message || !msg.key.fromMe) return
 
-        const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || "").toLowerCase().trim()
-        
-        if (text === "!start") {
-            if (isBroadcasting) return sock.sendMessage(msg.key.remoteJid, { text: "Bot udah jalan." })
-            isBroadcasting = true
-            sock.sendMessage(msg.key.remoteJid, { text: "MULAI BLAST KE SEMUA GRUP..." })
-            startBroadcast()
-        } 
-        else if (text === "!stop") {
-            if (!isBroadcasting) return
-            isBroadcasting = false
-            sock.sendMessage(msg.key.remoteJid, { text: "BLAST DIHENTIKAN." })
+            const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || "").toLowerCase().trim()
+            
+            if (text === "!start") {
+                if (isBroadcasting) return sock.sendMessage(msg.key.remoteJid, { text: "Bot udah jalan." })
+                isBroadcasting = true
+                sock.sendMessage(msg.key.remoteJid, { text: "Fyronn Bot Activated" })
+                startBroadcast()
+            } 
+            eelseif (text === "!stop") {
+                if (!isBroadcasting) return
+                isBroadcasting = false
+                sock.sendMessage(msg.key.remoteJid, { text: "Fyronn Bot Unactivated" })
+            }
+        } catch (e) {
+            // Silent catch untuk error dekripsi (Bad MAC)
         }
     })
 }
 
-// Fungsi blast
 async function startBroadcast() {
     try {
         const groups = await sock.groupFetchAllParticipating()
