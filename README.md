@@ -28,7 +28,7 @@ Jalankan perintah berikut untuk memastikan server download Termux normal:
 pkg update && pkg upgrade -y
 ```
 
-##3. SET UP
+**3. SET UP
 jalankan script ini untuk menjalankan bot WA fyronn
 cd fyronn-wa-bot
 npm install
