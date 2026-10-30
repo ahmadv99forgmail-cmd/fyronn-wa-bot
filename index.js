@@ -3,7 +3,7 @@ const {
     useMultiFileAuthState,
     DisconnectReason,
     fetchLatestBaileysVersion,
-} = require("@dcloude/baileys")
+} = require("@whiskeysockets/baileys")
 
 const pino = require("pino")
 const fs = require("fs")
@@ -11,6 +11,7 @@ const path = require("path")
 const readline = require("readline")
 const config = require("./config")
 
+// Setup log folder
 if (!fs.existsSync(config.logFolder)) {
     fs.mkdirSync(config.logFolder, { recursive: true })
 }
@@ -26,6 +27,7 @@ function log(level, ...args) {
     logStream.write(line + "\n")
 }
 
+// State management untuk cooldown
 function loadState() {
     if (fs.existsSync(config.stateFile)) {
         try {
@@ -59,6 +61,7 @@ function formatDuration(ms) {
     return `${s}d`
 }
 
+// ========== VALIDASI & PROMPT NOMOR ==========
 function normalizeNumber(raw) {
     let num = String(raw).replace(/[^0-9]/g, "")
     if (num.startsWith("0")) num = "62" + num.slice(1)
@@ -133,7 +136,6 @@ function askPhoneNumber() {
                 })
             })
         }
-
         ask()
     })
 }
@@ -148,7 +150,6 @@ async function resolvePhoneNumber() {
     }
 
     const saved = loadSavedPhone()
-
     if (saved) {
         console.log(`\n[i] Menggunakan nomor tersimpan: ${saved}`)
         console.log(`[i] Kalau mau ganti, hapus file ${config.phoneFile} lalu restart\n`)
@@ -158,38 +159,39 @@ async function resolvePhoneNumber() {
     return await askPhoneNumber()
 }
 
+// ========== MAIN BOT ==========
 let sock
 let state = loadState()
 let isRunning = false
 let pairingRequested = false
-let pairingTimer = null
 let botPhoneNumber = null
 
 async function connectToWhatsApp() {
     const { state: authState, saveCreds } = await useMultiFileAuthState(config.authFolder)
     const { version } = await fetchLatestBaileysVersion()
 
-    const isRegistered = authState.creds.registered
-
     sock = makeWASocket({
         version,
         logger: pino({ level: "silent" }),
         printQRInTerminal: false,
         auth: authState,
-        browser: ["Fyronn Bot", "Chrome", "1.0.0"],
+        // Menggunakan browser standar agar server WA mau menerima pairing
+        browser: ["Ubuntu", "Chrome", "122.0.0.0"],
         generateHighQualityLinkPreview: true,
         syncFullHistory: false,
     })
 
     sock.ev.on("creds.update", saveCreds)
 
-    if (!isRegistered && botPhoneNumber && !pairingRequested) {
-        pairingRequested = true
+    sock.ev.on("connection.update", async (update) => {
+        const { connection, lastDisconnect, qr } = update
 
-        setTimeout(async () => {
+        // TRIGGER PAIRING CODE (Hanya dieksekusi saat QR dari server masuk)
+        if (qr && botPhoneNumber && !pairingRequested) {
+            pairingRequested = true
             try {
                 const code = await sock.requestPairingCode(botPhoneNumber)
-
+                
                 console.log("\n╔═══════════════════════════════════════════════╗")
                 console.log("║         PAIRING CODE WHATSAPP BOT            ║")
                 console.log("╠═══════════════════════════════════════════════╣")
@@ -201,45 +203,17 @@ async function connectToWhatsApp() {
                 console.log("║  1. Buka WhatsApp di HP                       ║")
                 console.log("║  2. Perangkat Tertaut → Tautkan Perangkat     ║")
                 console.log("║  3. Pilih 'Tautkan dengan nomor telepon'      ║")
-                console.log("║  4. Masukkan 8 digit kode di atas             ║")
-                console.log("║                                               ║")
-                console.log("║  Kode berlaku ~60 detik. Kalau expired,       ║")
-                console.log("║  bot auto-generate kode baru tiap 45 detik.   ║")
+                console.log("║  4. Masukkan 8 digit kode di atas (tanpa -)   ║")
                 console.log("╚═══════════════════════════════════════════════╝\n")
 
                 log("PAIRING", `Kode dikirim: ${code}`)
-
-                pairingTimer = setInterval(async () => {
-                    if (sock.authState.creds.registered) {
-                        clearInterval(pairingTimer)
-                        pairingTimer = null
-                        return
-                    }
-
-                    try {
-                        const newCode = await sock.requestPairingCode(botPhoneNumber)
-                        console.log(`\n[PAIRING] Kode baru: ${newCode}\n`)
-                        log("PAIRING", `Retry kode: ${newCode}`)
-                    } catch (err) {
-                        log("PAIRING_ERR", err.message)
-                    }
-                }, 45000)
             } catch (err) {
                 log("PAIRING_ERR", `Gagal minta pairing code: ${err.message}`)
                 pairingRequested = false
             }
-        }, 2000)
-    }
-
-    sock.ev.on("connection.update", (update) => {
-        const { connection, lastDisconnect } = update
+        }
 
         if (connection === "close") {
-            if (pairingTimer) {
-                clearInterval(pairingTimer)
-                pairingTimer = null
-            }
-
             const shouldReconnect =
                 lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut
 
@@ -252,11 +226,6 @@ async function connectToWhatsApp() {
                 process.exit(1)
             }
         } else if (connection === "open") {
-            if (pairingTimer) {
-                clearInterval(pairingTimer)
-                pairingTimer = null
-            }
-
             log("CONNECTED", "Bot terhubung ke WhatsApp")
 
             if (!isRunning) {
@@ -297,7 +266,6 @@ async function getAllGroups() {
             participants: metadata.participants?.length || 0,
         })
     }
-
     return list
 }
 
@@ -306,7 +274,6 @@ async function sendToGroup(group) {
 
     if (state.sentGroups[key]) {
         const cooldownEnd = state.sentGroups[key] + config.cooldownMs
-
         if (Date.now() < cooldownEnd) {
             const remaining = cooldownEnd - Date.now()
             log("COOLDOWN", `Skip ${group.subject} (${formatDuration(remaining)} lagi)`)
@@ -343,9 +310,7 @@ async function runRound() {
         target = target.slice(0, config.maxGroupsPerRound)
     }
 
-    let sentCount = 0
-    let skipCount = 0
-    let errorCount = 0
+    let sentCount = 0, skipCount = 0, errorCount = 0
 
     if (config.cooldownMode === "per-group") {
         for (let i = 0; i < target.length; i++) {
@@ -376,9 +341,7 @@ async function runRound() {
 
             if (result === "sent") {
                 sentCount++
-                const delay =
-                    config.messageDelayMinMs +
-                    Math.random() * (config.messageDelayMaxMs - config.messageDelayMinMs)
+                const delay = config.messageDelayMinMs + Math.random() * (config.messageDelayMaxMs - config.messageDelayMinMs)
                 await sleep(delay)
             } else if (result === "skip") {
                 skipCount++
