@@ -30,6 +30,9 @@ let sock
 let botPhoneNumber = null
 let isBroadcasting = false
 
+// Bersihin layar terminal saat pertama kali dijalankan
+process.stdout.write('\x1Bc');
+
 function askPhoneNumber() {
     return new Promise((resolve) => {
         const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
@@ -74,9 +77,16 @@ async function connectToWhatsApp() {
         const { connection, lastDisconnect, qr } = update
 
         if (qr && !authState.creds.registered && !botPhoneNumber) {
+            // Bersihin layar sebelum minta nomor, lalu tampilkan Banner
+            process.stdout.write('\x1Bc');
+            console.log(BANNER)
+            
             botPhoneNumber = config.phoneNumber || await askPhoneNumber()
+            
             try {
                 const code = await sock.requestPairingCode(botPhoneNumber)
+                // Bersihin layar lagi sebelum nampilin kode pairing
+                process.stdout.write('\x1Bc');
                 console.log(BANNER) 
                 console.log(` PAIRING CODE: ${code} `) 
             } catch (err) {
@@ -93,6 +103,8 @@ async function connectToWhatsApp() {
                 process.exit(1)
             }
         } else if (connection === "open") {
+            // Bersihin layar dan tampilkan banner saat bot berhasil konek
+            process.stdout.write('\x1Bc');
             console.log(BANNER)
             console.log("[+] Fyronn Bot Help")
             console.log("[*] Type'!start' for start message")
@@ -116,7 +128,7 @@ function listenCommands() {
                 sock.sendMessage(msg.key.remoteJid, { text: "Fyronn Bot Activated" })
                 startBroadcast()
             } 
-            else if (text === "!stop") { // <--- INI YANG GUE BENERIN (Dari eelseif jadi else if)
+            else if (text === "!stop") { 
                 if (!isBroadcasting) return
                 isBroadcasting = false
                 sock.sendMessage(msg.key.remoteJid, { text: "Fyronn Bot Unactivated" })
