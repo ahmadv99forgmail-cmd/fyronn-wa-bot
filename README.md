@@ -26,3 +26,10 @@ Download dan install Termux dari F-Droid (Jangan dari Play Store, karena versiny
 Jalankan perintah berikut untuk memastikan server download Termux normal:
 ```bash
 pkg update && pkg upgrade -y
+```
+
+##3. SET UP
+jalankan script ini untuk menjalankan bot WA fyronn
+cd fyronn-wa-bot
+npm install
+node index.js
