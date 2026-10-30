@@ -7,12 +7,3 @@ logs/
 *.log
 .phone
 .env
-.env.*
-.DS_Store
-Thumbs.db
-desktop.ini
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
