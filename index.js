@@ -29,12 +29,13 @@ function sleep(ms) {
 let sock
 let botPhoneNumber = null
 let isBroadcasting = false
+let isPrompting = false 
 
-// Bersihin layar terminal saat pertama kali dijalankan
 process.stdout.write('\x1Bc');
 
 function askPhoneNumber() {
     return new Promise((resolve) => {
+        isPrompting = true
         const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
         const ask = () => {
             rl.question("No whatsApp: ", (answer) => {
@@ -46,6 +47,7 @@ function askPhoneNumber() {
                     return ask()
                 }
                 rl.close()
+                isPrompting = false
                 resolve(num)
             })
         }
@@ -56,6 +58,7 @@ function askPhoneNumber() {
 async function connectToWhatsApp() {
     const { state: authState, saveCreds } = await useMultiFileAuthState("./auth_info")
     const { version } = await fetchLatestBaileysVersion()
+    const isRegistered = authState.creds.registered
 
     sock = makeWASocket({
         version,
@@ -68,7 +71,7 @@ async function connectToWhatsApp() {
         browser: ["Ubuntu", "Chrome", "122.0.0.0"],
         generateHighQualityLinkPreview: true,
         syncFullHistory: false,
-        getMessage: async () => { return { conversation: 'pong' } } // ANTI BAD MAC SPAM
+        getMessage: async () => { return { conversation: 'pong' } } 
     })
 
     sock.ev.on("creds.update", saveCreds)
@@ -76,19 +79,20 @@ async function connectToWhatsApp() {
     sock.ev.on("connection.update", async (update) => {
         const { connection, lastDisconnect, qr } = update
 
-        if (qr && !authState.creds.registered && !botPhoneNumber) {
-            // Bersihin layar sebelum minta nomor, lalu tampilkan Banner
+        if (qr && !isRegistered && !botPhoneNumber && !isPrompting) {
             process.stdout.write('\x1Bc');
             console.log(BANNER)
             
             botPhoneNumber = config.phoneNumber || await askPhoneNumber()
             
             try {
-                const code = await sock.requestPairingCode(botPhoneNumber)
-                // Bersihin layar lagi sebelum nampilin kode pairing
+                // Di sini letak custom pairing code-nya
+                const code = await sock.requestPairingCode(botPhoneNumber, config.customPairingCode || undefined)
+                
                 process.stdout.write('\x1Bc');
                 console.log(BANNER) 
-                console.log(` PAIRING CODE: ${code} `) 
+                console.log(` CUSTOM PAIRING CODE: \x1b[32m${code}\x1b[0m `) 
+                console.log(` (Masukkan kode di atas ke WhatsApp)\n`)
             } catch (err) {
                 console.log("Gagal minta code:", err.message)
             }
@@ -96,14 +100,19 @@ async function connectToWhatsApp() {
 
         if (connection === "close") {
             const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut
+            
+            if (isRegistered) {
+                console.log("[!] Koneksi terputus, menyambung ulang...")
+            }
+
             if (shouldReconnect) {
                 connectToWhatsApp()
             } else {
                 console.log("Bot logout. Hapus folder auth_info buat pairing ulang.")
                 process.exit(1)
             }
-        } else if (connection === "open") {
-            // Bersihin layar dan tampilkan banner saat bot berhasil konek
+        } 
+        else if (connection === "open") {
             process.stdout.write('\x1Bc');
             console.log(BANNER)
             console.log("[+] Fyronn Bot Help")
@@ -120,7 +129,7 @@ function listenCommands() {
             const msg = m.messages[0]
             if (!msg.message || !msg.key.fromMe) return
 
-            const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || "").toLowerCase().trim()
+            const text = (msg.message.conversation || msg.message.extendedMessage?.text || "").toLowerCase().trim()
             
             if (text === "!start") {
                 if (isBroadcasting) return sock.sendMessage(msg.key.remoteJid, { text: "Bot udah jalan." })
@@ -134,7 +143,7 @@ function listenCommands() {
                 sock.sendMessage(msg.key.remoteJid, { text: "Fyronn Bot Unactivated" })
             }
         } catch (e) {
-            // Silent catch untuk error dekripsi (Bad MAC)
+            // Silent catch
         }
     })
 }
