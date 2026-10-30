@@ -1,19 +1,7 @@
 module.exports = {
+    // Isi nomor HP lu di sini biar gak nanya di terminal (contoh: "628123456789")
+    // Kalau dikosongin (""), bot bakal nanya pas pertama kali run.
     phoneNumber: "",
-    phoneFile: "./.phone",
-
-    cooldownMs: 10 * 60 * 1000,
-    cooldownMode: "per-group",
-    jitterMs: 2 * 60 * 1000,
-    messageDelayMinMs: 5000,
-    messageDelayMaxMs: 15000,
-    maxGroupsPerRound: 0,
-    skipInactive: true,
-    inactiveThresholdMs: 30 * 24 * 60 * 60 * 1000,
-
-    authFolder: "./auth_info",
-    logFolder: "./logs",
-    stateFile: "./state.json",
 
     message: `بسم الله الرحمن الرحيم
 
@@ -50,5 +38,5 @@ MINAT? PM
 https://wa.me/6281287048664
 
 SALURAN
- https://whatsapp.com/channel/0029Vb9KOPK4dTnO6zMt7R3z`
+https://whatsapp.com/channel/0029Vb9KOPK4dTnO6zMt7R3z`
 }
