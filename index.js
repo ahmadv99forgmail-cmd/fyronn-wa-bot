@@ -116,7 +116,7 @@ function listenCommands() {
                 sock.sendMessage(msg.key.remoteJid, { text: "Fyronn Bot Activated" })
                 startBroadcast()
             } 
-            eelseif (text === "!stop") {
+            else if (text === "!stop") { // <--- INI YANG GUE BENERIN (Dari eelseif jadi else if)
                 if (!isBroadcasting) return
                 isBroadcasting = false
                 sock.sendMessage(msg.key.remoteJid, { text: "Fyronn Bot Unactivated" })
