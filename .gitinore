@@ -1,27 +1,16 @@
-# Dependencies
 node_modules/
-package-lock.json.bak
-
-# WhatsApp session (SANGAT SENSITIF — jangan sampai ke-push)
 auth_info/
 *.session
 creds.json
-
-# Runtime state
 state.json
 logs/
 *.log
-
-# Environment
+.phone
 .env
 .env.*
-
-# OS
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# Editor
 .vscode/
 .idea/
 *.swp
