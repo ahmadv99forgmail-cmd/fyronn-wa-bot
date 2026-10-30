@@ -1,7 +1,7 @@
 module.exports = {
     // Isi custom pairing code di sini (WAJIB PAS 8 KARAKTER)
     // Contoh: "FYRONN99", "BANANA12", "MARKET01"
-    customPairingCode: "FYRONN99",
+    customPairingCode: "FYROONN",
 
     // Sisanya biarin aja kayak sebelumnya
     phoneNumber: "",
